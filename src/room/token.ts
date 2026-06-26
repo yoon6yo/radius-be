@@ -14,3 +14,10 @@ export function generateToken(): string {
 export function normalizeToken(token: string): string {
   return token.toUpperCase().trim();
 }
+
+// 토큰 형식: ALPHABET 문자 6자 (대소문자 구분 없이 검사)
+const TOKEN_PATTERN = /^[A-HJKMNP-Z2-9]{6}$/i;
+
+export function isValidToken(token: string): boolean {
+  return TOKEN_PATTERN.test(token.trim());
+}
