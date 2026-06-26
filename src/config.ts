@@ -1,5 +1,29 @@
 import 'dotenv/config';
 
+function parseCorsOrigin(raw: string | undefined): string | string[] {
+  if (!raw || raw === '*') return '*';
+  const origins = raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return origins.length === 1 ? origins[0] : origins;
+}
+
+function parseStunUrls(raw: string | undefined): string[] {
+  return (raw ?? 'stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+const turnConfig = process.env.TURN_URL
+  ? {
+      url: process.env.TURN_URL,
+      username: process.env.TURN_USERNAME ?? '',
+      credential: process.env.TURN_CREDENTIAL ?? '',
+    }
+  : null;
+
 export const config = {
   port: parseInt(process.env.PORT ?? '3000', 10),
   redis: {
@@ -13,6 +37,10 @@ export const config = {
     maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS ?? '20', 10),
   },
   cors: {
-    origin: process.env.CORS_ORIGIN ?? '*',
+    origin: parseCorsOrigin(process.env.CORS_ORIGIN),
   },
-} as const;
+  ice: {
+    stunUrls: parseStunUrls(process.env.STUN_URLS),
+    turn: turnConfig,
+  },
+};
