@@ -15,25 +15,33 @@ export class RoomService {
   constructor(private readonly redis: Redis) {}
 
   async createRoom(offererSocketId: string): Promise<{ token: string; expiresAt: number }> {
-    const token = generateToken();
     const now = Date.now();
     const expiresAt = now + config.room.ttlSeconds * 1000;
 
-    await this.redis
-      .multi()
-      .hset(roomKey(token), {
-        token,
-        offererSocketId,
-        answererSocketId: '',
-        createdAt: String(now),
-        expiresAt: String(expiresAt),
-      })
-      .expire(roomKey(token), config.room.ttlSeconds)
-      .hset(socketKey(offererSocketId), { roomToken: token, role: 'offerer' })
-      .expire(socketKey(offererSocketId), config.room.ttlSeconds)
-      .exec();
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const token = generateToken();
 
-    return { token, expiresAt };
+      // HSETNX atomically claims the token: returns 1 if set, 0 if the field already exists
+      const claimed = await this.redis.hsetnx(roomKey(token), 'token', token);
+      if (claimed === 0) continue;
+
+      await this.redis
+        .multi()
+        .hset(roomKey(token), {
+          offererSocketId,
+          answererSocketId: '',
+          createdAt: String(now),
+          expiresAt: String(expiresAt),
+        })
+        .expire(roomKey(token), config.room.ttlSeconds)
+        .hset(socketKey(offererSocketId), { roomToken: token, role: 'offerer' })
+        .expire(socketKey(offererSocketId), config.room.ttlSeconds)
+        .exec();
+
+      return { token, expiresAt };
+    }
+
+    throw new Error('Failed to generate a unique room token after 5 attempts');
   }
 
   async joinRoom(

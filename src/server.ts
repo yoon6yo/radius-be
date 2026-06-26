@@ -14,6 +14,12 @@ import type {
   SocketData,
 } from './types/signaling';
 
+interface IceServer {
+  urls: string | string[];
+  username?: string;
+  credential?: string;
+}
+
 export async function createApp() {
   const app = express();
   const httpServer = createServer(app);
@@ -36,8 +42,28 @@ export async function createApp() {
   const roomService = new RoomService(pubClient);
   const rateLimiter = new RateLimiter(pubClient);
 
-  app.get('/health', (_req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  app.get('/health', async (_req, res) => {
+    try {
+      await pubClient.ping();
+      res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    } catch {
+      res.status(503).json({ status: 'error', timestamp: new Date().toISOString() });
+    }
+  });
+
+  // ICE 서버 설정 제공: 프론트엔드가 RTCPeerConnection 생성 시 사용
+  app.get('/ice-config', (_req, res) => {
+    const iceServers: IceServer[] = [{ urls: config.ice.stunUrls }];
+
+    if (config.ice.turn) {
+      iceServers.push({
+        urls: config.ice.turn.url,
+        username: config.ice.turn.username,
+        credential: config.ice.turn.credential,
+      });
+    }
+
+    res.json({ iceServers });
   });
 
   registerSignalingHandlers(io, roomService, rateLimiter);
