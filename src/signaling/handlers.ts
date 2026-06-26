@@ -1,7 +1,7 @@
 import type { Server, Socket } from 'socket.io';
 import type { RoomService } from '../room/roomService';
 import type { RateLimiter } from './rateLimiter';
-import { normalizeToken } from '../room/token';
+import { normalizeToken, isValidToken } from '../room/token';
 import type {
   ServerToClientEvents,
   ClientToServerEvents,
@@ -33,6 +33,11 @@ export function registerSignalingHandlers(
 
     socket.on('create-room', async (callback) => {
       try {
+        if (socket.data.roomToken) {
+          callback({ ok: false, error: 'Already in a room' });
+          return;
+        }
+
         const { allowed } = await rateLimiter.check(ip);
         if (!allowed) {
           callback({ ok: false, error: 'Too many requests' });
@@ -53,6 +58,16 @@ export function registerSignalingHandlers(
 
     socket.on('join-room', async (rawToken, callback) => {
       try {
+        if (socket.data.roomToken) {
+          callback({ ok: false, error: 'Already in a room' });
+          return;
+        }
+
+        if (!isValidToken(rawToken)) {
+          callback({ ok: false, error: 'Invalid token format' });
+          return;
+        }
+
         const { allowed } = await rateLimiter.check(ip);
         if (!allowed) {
           callback({ ok: false, error: 'Too many requests' });
@@ -83,6 +98,21 @@ export function registerSignalingHandlers(
 
     socket.on('rejoin', async ({ token: rawToken, role }: RejoinPayload, callback) => {
       try {
+        if (socket.data.roomToken) {
+          callback({ ok: false, error: 'Already in a room' });
+          return;
+        }
+
+        if (!isValidToken(rawToken)) {
+          callback({ ok: false, error: 'Invalid token format' });
+          return;
+        }
+
+        if (role !== 'offerer' && role !== 'answerer') {
+          callback({ ok: false, error: 'Invalid role' });
+          return;
+        }
+
         const token = normalizeToken(rawToken);
         const result = await roomService.rejoinRoom(token, role, socket.id);
 
@@ -95,7 +125,7 @@ export function registerSignalingHandlers(
         socket.data.role = role;
         await socket.join(`room:${token}`);
 
-        // Notify the other peer so they can re-initiate signaling if they are the offerer
+        // Notify the other peer so offerer can re-initiate signaling
         socket.to(`room:${token}`).emit('peer-reconnected', { role });
 
         callback({ ok: true, peerConnected: result.peerConnected, expiresAt: result.expiresAt });
