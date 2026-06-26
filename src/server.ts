@@ -68,5 +68,5 @@ export async function createApp() {
 
   registerSignalingHandlers(io, roomService, rateLimiter);
 
-  return { httpServer, pubClient, subClient };
+  return { httpServer, io, pubClient, subClient };
 }
