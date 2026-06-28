@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: radius-frontend
+  namespace: radius
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: radius-frontend
+  template:
+    metadata:
+      labels:
+        app: radius-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: ghcr.io/yoon6yo/radius-fe:latest
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 10

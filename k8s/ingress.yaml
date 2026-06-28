@@ -1,7 +1,34 @@
+# 프론트엔드 Ingress
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: radius-ingress
+  name: radius-frontend-ingress
+  namespace: radius
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+    - hosts:
+        - PLACEHOLDER_DOMAIN  # 실제 도메인으로 변경 (예: radius.example.com)
+      secretName: radius-fe-tls
+  rules:
+    - host: PLACEHOLDER_DOMAIN  # 실제 도메인으로 변경
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: radius-frontend
+                port:
+                  number: 80
+---
+# 시그널링 백엔드 Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: radius-backend-ingress
   namespace: radius
   annotations:
     kubernetes.io/ingress.class: nginx
@@ -10,17 +37,15 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
-    # Socket.io long-polling fallback을 위한 sticky session
-    # Redis Adapter를 사용하므로 WebSocket 연결은 sticky session 불필요하지만
-    # 초기 polling handshake 단계에서는 동일 Pod로 라우팅되어야 함
+    # 초기 polling handshake 단계에서 동일 Pod로 라우팅
     nginx.ingress.kubernetes.io/affinity: "cookie"
     nginx.ingress.kubernetes.io/session-cookie-name: "INGRESSCOOKIE"
     nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
 spec:
   tls:
     - hosts:
-        - api.PLACEHOLDER_DOMAIN  # 실제 도메인으로 변경
-      secretName: radius-tls
+        - api.PLACEHOLDER_DOMAIN  # 실제 도메인으로 변경 (예: api.radius.example.com)
+      secretName: radius-be-tls
   rules:
     - host: api.PLACEHOLDER_DOMAIN  # 실제 도메인으로 변경
       http:
