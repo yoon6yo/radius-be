@@ -49,7 +49,7 @@ export function registerSignalingHandlers(
         socket.data.role = 'offerer';
         await socket.join(`room:${token}`);
 
-        callback({ ok: true, token, expiresAt });
+        callback({ ok: true, token, role: 'offerer', expiresAt });
       } catch (err) {
         console.error('[create-room]', err);
         callback({ ok: false, error: 'Internal server error' });
@@ -89,7 +89,7 @@ export function registerSignalingHandlers(
         // Trigger offerer to create and send the offer
         socket.to(`room:${token}`).emit('peer-joined');
 
-        callback({ ok: true, expiresAt: result.expiresAt });
+        callback({ ok: true, role: 'answerer', expiresAt: result.expiresAt });
       } catch (err) {
         console.error('[join-room]', err);
         callback({ ok: false, error: 'Internal server error' });
@@ -128,7 +128,7 @@ export function registerSignalingHandlers(
         // Notify the other peer so offerer can re-initiate signaling
         socket.to(`room:${token}`).emit('peer-reconnected', { role });
 
-        callback({ ok: true, peerConnected: result.peerConnected, expiresAt: result.expiresAt });
+        callback({ ok: true, role, peerConnected: result.peerConnected, expiresAt: result.expiresAt });
       } catch (err) {
         console.error('[rejoin]', err);
         callback({ ok: false, error: 'Internal server error' });
