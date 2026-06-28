@@ -10,15 +10,15 @@ export interface RoomData {
 
 // Callback response types
 export type CreateRoomResult =
-  | { ok: true; token: string; expiresAt: number }
+  | { ok: true; token: string; role: 'offerer'; expiresAt: number }
   | { ok: false; error: string };
 
 export type JoinRoomResult =
-  | { ok: true; expiresAt: number }
+  | { ok: true; role: 'answerer'; expiresAt: number }
   | { ok: false; error: string };
 
 export type RejoinResult =
-  | { ok: true; peerConnected: boolean; expiresAt: number }
+  | { ok: true; role: PeerRole; peerConnected: boolean; expiresAt: number }
   | { ok: false; error: string };
 
 // Signaling payloads
