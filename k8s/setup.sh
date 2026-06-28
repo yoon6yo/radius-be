@@ -1,14 +1,35 @@
 #!/bin/sh
 # k3s 클러스터 초기 배포 스크립트
-# 사전 조건:
-#   - k3s 설치 완료 (Traefik 비활성화 옵션으로 설치)
-#   - nginx-ingress controller 설치 완료:
-#       kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.0/deploy/static/provider/baremetal/deploy.yaml
-#   - cert-manager 설치 완료:
-#       kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.5/cert-manager.yaml
-#   - k8s/ingress.yaml의 PLACEHOLDER_DOMAIN을 실제 도메인으로 교체
-#   - radius-signaling-secret 생성 (아래 참고)
-#   - VITE_SIGNALING_URL을 포함해서 radius-fe 이미지를 빌드했는지 확인
+#
+# ── 사전 조건 ────────────────────────────────────────────────
+#
+# 1. k3s 설치 (Traefik 비활성화 + 80/443 NodePort 허용)
+#    curl -sfL https://get.k3s.io | sh -s - --disable traefik \
+#      --kube-apiserver-arg service-node-port-range=80-32767
+#
+# 2. kubectl 설정
+#    mkdir -p ~/.kube
+#    sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
+#    sudo chown $USER ~/.kube/config
+#
+# 3. nginx-ingress 설치 (baremetal NodePort 방식)
+#    kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.0/deploy/static/provider/baremetal/deploy.yaml
+#
+#    설치 후 NodePort를 80/443으로 고정
+#    kubectl patch svc ingress-nginx-controller -n ingress-nginx \
+#      --type='json' \
+#      -p='[{"op":"replace","path":"/spec/ports/0/nodePort","value":80},
+#           {"op":"replace","path":"/spec/ports/1/nodePort","value":443}]'
+#
+# 4. cert-manager 설치
+#    kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.5/cert-manager.yaml
+#    kubectl wait --namespace cert-manager --for=condition=ready pod \
+#      --selector=app.kubernetes.io/instance=cert-manager --timeout=120s
+#
+# 5. k8s/ingress.yaml의 PLACEHOLDER_DOMAIN을 실제 도메인으로 교체
+# 6. radius-signaling-secret 생성 (아래 2번 참고)
+# 7. VITE_SIGNALING_URL을 포함해서 radius-fe 이미지를 빌드했는지 확인
+# ─────────────────────────────────────────────────────────────
 
 set -e
 
