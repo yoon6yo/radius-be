@@ -5,9 +5,9 @@ metadata:
   name: radius-frontend-ingress
   namespace: radius
   annotations:
-    kubernetes.io/ingress.class: nginx
     cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
+  ingressClassName: nginx
   tls:
     - hosts:
         - PLACEHOLDER_DOMAIN  # 실제 도메인으로 변경 (예: radius.example.com)
@@ -31,7 +31,6 @@ metadata:
   name: radius-backend-ingress
   namespace: radius
   annotations:
-    kubernetes.io/ingress.class: nginx
     cert-manager.io/cluster-issuer: letsencrypt-prod
     # Socket.io WebSocket 연결 유지를 위한 타임아웃 설정
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
@@ -42,6 +41,7 @@ metadata:
     nginx.ingress.kubernetes.io/session-cookie-name: "INGRESSCOOKIE"
     nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
 spec:
+  ingressClassName: nginx
   tls:
     - hosts:
         - api.PLACEHOLDER_DOMAIN  # 실제 도메인으로 변경 (예: api.radius.example.com)

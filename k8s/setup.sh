@@ -27,36 +27,61 @@
 #      --selector=app.kubernetes.io/instance=cert-manager --timeout=120s
 #
 # 5. k8s/ingress.yaml의 PLACEHOLDER_DOMAIN을 실제 도메인으로 교체
-# 6. radius-signaling-secret 생성 (아래 2번 참고)
-# 7. VITE_SIGNALING_URL을 포함해서 radius-fe 이미지를 빌드했는지 확인
+# 6. VITE_SIGNALING_URL을 포함해서 radius-fe 이미지를 빌드했는지 확인
+#    (GitHub Actions가 main push 시 자동 빌드)
 # ─────────────────────────────────────────────────────────────
 
 set -e
 
+FRONTEND_DOMAIN="${FRONTEND_DOMAIN:-}"
+GHCR_USER="${GHCR_USER:-}"
+GHCR_TOKEN="${GHCR_TOKEN:-}"
+
+if [ -z "$FRONTEND_DOMAIN" ] || [ -z "$GHCR_USER" ] || [ -z "$GHCR_TOKEN" ]; then
+  echo "사용법:"
+  echo "  FRONTEND_DOMAIN=radius.example.com \\"
+  echo "  GHCR_USER=깃허브유저명 \\"
+  echo "  GHCR_TOKEN=ghp_xxx \\"
+  echo "  sh k8s/setup.sh"
+  echo ""
+  echo "GHCR_TOKEN: GitHub → Settings → Developer settings → Personal access tokens"
+  echo "           → read:packages 권한 필요"
+  exit 1
+fi
+
 # 1. 네임스페이스 생성
 kubectl apply -f k8s/namespace.yaml
 
-# 2. Secret 생성 (실제 도메인으로 변경 후 주석 해제)
-# kubectl create secret generic radius-signaling-secret \
-#   --from-literal=cors-origin="https://PLACEHOLDER_FRONTEND_DOMAIN" \
-#   -n radius
+# 2. GHCR 이미지 Pull 인증 시크릿
+kubectl create secret docker-registry ghcr-secret \
+  --docker-server=ghcr.io \
+  --docker-username="$GHCR_USER" \
+  --docker-password="$GHCR_TOKEN" \
+  -n radius \
+  --dry-run=client -o yaml | kubectl apply -f -
 
-# 3. cert-manager ClusterIssuer 생성
+# 3. 시그널링 서버 CORS 시크릿
+kubectl create secret generic radius-signaling-secret \
+  --from-literal=cors-origin="https://$FRONTEND_DOMAIN" \
+  -n radius \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# 4. cert-manager ClusterIssuer 생성
 kubectl apply -f k8s/cert-manager/cluster-issuer.yaml
 
-# 4. Redis 배포
+# 5. Redis 배포
 kubectl apply -f k8s/redis/deployment.yaml
 kubectl apply -f k8s/redis/service.yaml
 
-# 5. 시그널링 백엔드 배포
+# 6. 시그널링 백엔드 배포
 kubectl apply -f k8s/signaling/deployment.yaml
 kubectl apply -f k8s/signaling/service.yaml
 
-# 6. 프론트엔드 배포
+# 7. 프론트엔드 배포
 kubectl apply -f k8s/frontend/deployment.yaml
 kubectl apply -f k8s/frontend/service.yaml
 
-# 7. Ingress + TLS 설정
+# 8. Ingress + TLS 설정
 kubectl apply -f k8s/ingress.yaml
 
 echo "배포 완료. 상태 확인:"

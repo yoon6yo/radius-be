@@ -86,13 +86,14 @@ docker build -t radius-be .
 
 ```bash
 # 최초 배포 (서버에서 실행)
-# k8s/ingress.yaml의 PLACEHOLDER_DOMAIN을 실제 도메인으로 교체 후
+# 1. k8s/ingress.yaml의 PLACEHOLDER_DOMAIN을 실제 도메인으로 교체
+# 2. GitHub PAT 발급: Settings → Developer settings → Personal access tokens (read:packages 권한)
+# 3. 아래 환경변수와 함께 실행
 
-kubectl create secret generic radius-signaling-secret \
-  --from-literal=cors-origin="https://radius.example.com" \
-  -n radius
-
+FRONTEND_DOMAIN=radius.example.com \
+GHCR_USER=깃허브유저명 \
+GHCR_TOKEN=ghp_xxx \
 sh k8s/setup.sh
 ```
 
-선행 조건: k3s (`--disable traefik`), nginx-ingress controller, cert-manager 설치 필요.
+선행 조건: k3s (`--disable traefik` + `--kube-apiserver-arg service-node-port-range=80-32767`), nginx-ingress controller (NodePort 80/443 고정), cert-manager 설치 필요.

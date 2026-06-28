@@ -13,6 +13,8 @@ spec:
       labels:
         app: radius-signaling
     spec:
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: signaling
           image: ghcr.io/yoon6yo/radius-be:latest

@@ -13,6 +13,8 @@ spec:
       labels:
         app: radius-frontend
     spec:
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: frontend
           image: ghcr.io/yoon6yo/radius-fe:latest
